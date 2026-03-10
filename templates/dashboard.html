@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Security Demo{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+<p>Welcome, {{ user }}!</p>
+
+<h2>Your Account</h2>
+<p>Balance: $10,000</p>
+<p>Account Type: Demo Account</p>
+
+<h2>Quick Actions</h2>
+<ul>
+    <li><a href="/search">Search Users</a></li>
+    <li><a href="/comments">View Comments</a></li>
+    <li><a href="/ping">Network Tools</a></li>
+    <li><a href="/transfer">Transfer Money</a></li>
+</ul>
+{% endblock %}

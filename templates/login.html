@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Security Demo{% endblock %}
+
+{% block content %}
+<h1>Login</h1>
+<p><strong>Vulnerability:</strong> SQL Injection - This form is vulnerable to SQL injection attacks.</p>
+<p>Try: <code>' OR '1'='1</code> as username and password.</p>
+
+<form method="POST">
+    <label>Username:</label>
+    <input type="text" name="username" required>
+    
+    <label>Password:</label>
+    <input type="password" name="password" required>
+    
+    <button type="submit" class="btn">Login</button>
+</form>
+
+<p><small>Default users: admin/admin123, john/john123, jane/jane123</small></p>
+{% endblock %}

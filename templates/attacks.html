@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Attack Log - Security Demo{% endblock %}
+
+{% block content %}
+<h1>Attack Detection Log</h1>
+<p>This page shows all detected attack attempts on the application.</p>
+
+{% if attacks %}
+    <h2>Total Attacks Detected: {{ attacks|length }}</h2>
+    
+    {% for attack in attacks %}
+    <div class="attack-card">
+        <h3>{{ attack.type }}</h3>
+        <p><strong>Details:</strong> {{ attack.details }}</p>
+        <p><strong>IP Address:</strong> {{ attack.ip }}</p>
+        <p><strong>User Agent:</strong> {{ attack.user_agent }}</p>
+    </div>
+    {% endfor %}
+{% else %}
+    <p>No attacks detected yet.</p>
+{% endif %}
+
+<p><a href="/" class="btn">Back to Home</a></p>
+{% endblock %}

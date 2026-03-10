@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Comments - Security Demo{% endblock %}
+
+{% block content %}
+<h1>Comments</h1>
+<p><strong>Vulnerability:</strong> XSS - Comments are stored and displayed without sanitization.</p>
+<p>Try: <code>&lt;script&gt;alert('XSS')&lt;/script&gt;</code></p>
+
+<form method="POST">
+    <textarea name="comment" placeholder="Enter your comment" rows="4" required></textarea>
+    <button type="submit" class="btn">Post Comment</button>
+</form>
+
+<h2>All Comments:</h2>
+{% for comment in comments %}
+<div class="attack-card">
+    <p>{{ comment[1] }}</p>
+</div>
+{% endfor %}
+{% endblock %}

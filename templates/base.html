@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Security Demo App{% endblock %}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f4; }
+        nav { background: #333; padding: 1rem; }
+        nav a { color: white; text-decoration: none; margin: 0 15px; }
+        nav a:hover { text-decoration: underline; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; background: white; border-radius: 5px; }
+        .alert { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .btn { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .btn:hover { background: #0056b3; }
+        input, textarea { width: 100%; padding: 10px; margin: 5px 0; box-sizing: border-box; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+        th { background: #007bff; color: white; }
+        .attack-card { background: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/">Home</a>
+        <a href="/login">Login</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/search">Search</a>
+        <a href="/comments">Comments</a>
+        <a href="/ping">Network Tools</a>
+        <a href="/transfer">Transfer</a>
+        <a href="/admin/attacks">Attack Log</a>
+        {% if session.user %}
+        <a href="/logout">Logout</a>
+        {% endif %}
+    </nav>
+    
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

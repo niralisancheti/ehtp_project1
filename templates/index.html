@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Security Demo{% endblock %}
+
+{% block content %}
+<h1>Welcome to Security Demo Application</h1>
+<p>This is an educational web application that demonstrates common web vulnerabilities and their detection/prevention.</p>
+
+<h2>Available Vulnerabilities for Demonstration:</h2>
+
+<div class="attack-card">
+    <h3>1. SQL Injection</h3>
+    <p>Go to <a href="/login">Login page</a> and try entering: <code>' OR '1'='1</code> in the username field.</p>
+    <p><strong>Detection:</strong> The system will detect and log this attack attempt.</p>
+</div>
+
+<div class="attack-card">
+    <h3>2. Cross-Site Scripting (XSS)</h3>
+    <p>Go to <a href="/comments">Comments page</a> and try: <code>&lt;script&gt;alert('XSS')&lt;/script&gt;</code></p>
+    <p><strong>Detection:</strong> Malicious scripts will be detected and blocked.</p>
+</div>
+
+<div class="attack-card">
+    <h3>3. Command Injection</h3>
+    <p>Go to <a href="/ping">Network Tools</a> and try: <code>127.0.0.1 & whoami</code></p>
+    <p><strong>Detection:</strong> Command injection attempts will be detected.</p>
+</div>
+
+<div class="attack-card">
+    <h3>4. Cross-Site Request Forgery (CSRF)</h3>
+    <p>The transfer page lacks CSRF protection - demonstrates how attacks work.</p>
+    <p><strong>Prevention:</strong> Use Flask-WTF forms with CSRF tokens.</p>
+</div>
+
+<p><a href="/admin/attacks" class="btn">View Attack Log</a></p>
+{% endblock %}

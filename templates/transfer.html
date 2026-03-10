@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Transfer - Security Demo{% endblock %}
+
+{% block content %}
+<h1>Transfer Money</h1>
+<p><strong>Vulnerability:</strong> CSRF - This form lacks CSRF protection.</p>
+<p>In a real attack, a malicious site could trigger this form without the user's knowledge.</p>
+
+<form method="POST">
+    <label>Recipient Username:</label>
+    <input type="text" name="to_user" required>
+    
+    <label>Amount:</label>
+    <input type="number" name="amount" required>
+    
+    <button type="submit" class="btn">Transfer</button>
+</form>
+
+<p><small>Note: This is a demo. No actual transfers occur.</small></p>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Network Tools - Security Demo{% endblock %}
+
+{% block content %}
+<h1>Network Tools</h1>
+<p><strong>Vulnerability:</strong> Command Injection - The ping functionality is vulnerable to command injection.</p>
+<p>Try: <code>127.0.0.1 & whoami</code></p>
+
+<form method="POST">
+    <input type="text" name="host" placeholder="Enter host or IP" required>
+    <button type="submit" class="btn">Ping</button>
+</form>
+
+{% if result %}
+<h2>Result:</h2>
+<pre>{{ result }}</pre>
+{% endif %}
+{% endblock %}
