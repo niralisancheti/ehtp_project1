@@ -205,8 +205,10 @@ def ping():
         return jsonify({'error': 'Command Injection attempt detected!', 'attack': True}), 400
     
     import subprocess
+    import platform
     try:
-        output = subprocess.check_output(['ping', '-n', '1', host],
+        count_flag = '-n' if platform.system().lower() == 'windows' else '-c'
+        output = subprocess.check_output(['ping', count_flag, '1', host],
                                          stderr=subprocess.STDOUT,
                                          text=True, timeout=5)
         return jsonify({'result': output})
@@ -215,14 +217,32 @@ def ping():
 
 @app.route('/api/transfer', methods=['POST'])
 def transfer():
-    if 'user' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    data = request.json
+    data = request.json or {}
     to_user = data.get('to_user', '')
     amount = data.get('amount', '')
-    
-    return jsonify({'message': f'Transfer of ${amount} to {to_user} initiated (CSRF vulnerable)', 'success': True})
+    simulate = data.get('simulate_csrf', False)
+
+    ip = request.remote_addr
+    csrf_token = request.headers.get('X-CSRF-Token', '')
+
+    if simulate:
+        log_attack('CSRF', f'Simulated external site forged transfer of ${amount} to {to_user} (no CSRF token)', ip)
+        return jsonify({
+            'message': f'Transfer of ${amount} to {to_user} went through!',
+            'attack': True,
+            'attack_detail': 'CSRF attack succeeded — no token validation stopped the forged request.',
+            'success': True
+        })
+
+    if not csrf_token:
+        log_attack('CSRF', f'Transfer of ${amount} to {to_user} completed without CSRF token', ip)
+        return jsonify({
+            'message': f'Transfer of ${amount} to {to_user} initiated',
+            'warning': 'No CSRF token was sent — this request could be forged by an external site.',
+            'success': True
+        })
+
+    return jsonify({'message': f'Transfer of ${amount} to {to_user} initiated', 'success': True})
 
 @app.route('/api/attacks', methods=['GET'])
 def get_attacks():
@@ -259,4 +279,4 @@ def dashboard():
 
 if __name__ == '__main__':
     setup_database()
-    app.run(debug=False, port=5000)
+    app.run(debug=False, port=5001)
