@@ -167,3 +167,11 @@
 2026-03-10 17:50:16,477 - INFO - 127.0.0.1 - - [10/Mar/2026 17:50:16] "POST /api/login HTTP/1.1" 200 -
 2026-03-10 17:50:16,719 - INFO - 127.0.0.1 - - [10/Mar/2026 17:50:16] "GET /api/dashboard?user=admin HTTP/1.1" 200 -
 2026-03-10 17:50:16,821 - INFO - 127.0.0.1 - - [10/Mar/2026 17:50:16] "GET /api/dashboard?user=admin HTTP/1.1" 200 -
+2026-03-10 18:02:26,844 - INFO - 127.0.0.1 - - [10/Mar/2026 18:02:26] "GET /api/dashboard?user=admin HTTP/1.1" 200 -
+2026-03-10 18:02:27,044 - INFO - 127.0.0.1 - - [10/Mar/2026 18:02:27] "GET /api/dashboard?user=admin HTTP/1.1" 200 -
+2026-03-10 19:39:55,208 - INFO - 127.0.0.1 - - [10/Mar/2026 19:39:55] "GET /api/dashboard?user=admin HTTP/1.1" 200 -
+2026-03-10 19:39:55,236 - INFO - 127.0.0.1 - - [10/Mar/2026 19:39:55] "GET /api/dashboard?user=admin HTTP/1.1" 200 -
+2026-03-10 19:48:01,860 - INFO - 127.0.0.1 - - [10/Mar/2026 19:48:01] "GET /api/dashboard?user=admin HTTP/1.1" 200 -
+2026-03-10 19:48:01,899 - INFO - 127.0.0.1 - - [10/Mar/2026 19:48:01] "GET /api/dashboard?user=admin HTTP/1.1" 200 -
+2026-03-10 19:48:07,953 - INFO - 127.0.0.1 - - [10/Mar/2026 19:48:07] "GET /api/attacks HTTP/1.1" 200 -
+2026-03-10 19:48:08,216 - INFO - 127.0.0.1 - - [10/Mar/2026 19:48:08] "GET /api/attacks HTTP/1.1" 200 -

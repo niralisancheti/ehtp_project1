@@ -205,8 +205,10 @@ def ping():
             return redirect(url_for('ping'))
         
         import subprocess
+        import platform
         try:
-            result = subprocess.check_output(['ping', '-n', '1', host], 
+            count_flag = '-n' if platform.system().lower() == 'windows' else '-c'
+            result = subprocess.check_output(['ping', count_flag, '1', host],
                                            stderr=subprocess.STDOUT, 
                                            text=True, timeout=5)
         except Exception as e:
