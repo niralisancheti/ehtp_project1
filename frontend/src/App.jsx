@@ -136,16 +136,171 @@ function Navbar() {
   )
 }
 
+/* ─── Kali Terminal Modal ─── */
+function KaliTerminal({ attack, onClose }) {
+  const [lines, setLines] = useState([])
+  const [status, setStatus] = useState('connecting')
+  const [jobId, setJobId] = useState(null)
+  const [duration, setDuration] = useState(null)
+  const termRef = useRef(null)
+  const lineCountRef = useRef(0)
+
+  useEffect(() => {
+    let interval = null
+
+    const startAttack = async () => {
+      setLines([
+        { text: `root@kali:~# Starting ${attack.title} attack module...`, type: 'cmd' },
+        { text: `[*] Target: http://backend:5001`, type: 'info' },
+        { text: `[*] Tools: ${attack.kaliTools}`, type: 'info' },
+        { text: '', type: 'blank' },
+      ])
+      setStatus('launching')
+
+      try {
+        const res = await axios.post(`${API_URL}/run-attack`, { attack_type: attack.id })
+        const jid = res.data.job_id
+        setJobId(jid)
+        setStatus('running')
+        setLines(prev => [...prev, { text: `[+] Job started: ${jid}`, type: 'success' }, { text: '', type: 'blank' }])
+        lineCountRef.current = 0
+
+        interval = setInterval(async () => {
+          try {
+            const statusRes = await axios.get(`${API_URL}/attack-status/${jid}?from_line=${lineCountRef.current}`)
+            const newLines = statusRes.data.lines || []
+            if (newLines.length > 0) {
+              const formatted = newLines.map(l => {
+                let type = 'output'
+                if (l.startsWith('[*]') || l.startsWith('===')) type = 'info'
+                else if (l.startsWith('[+]')) type = 'success'
+                else if (l.startsWith('[>]') || l.startsWith('[!]')) type = 'payload'
+                else if (l.startsWith('[-]')) type = 'error'
+                else if (l.includes('"attack"') || l.includes('"error"')) type = 'response'
+                return { text: l, type }
+              })
+              setLines(prev => [...prev, ...formatted])
+              lineCountRef.current += newLines.length
+            }
+
+            if (statusRes.data.status === 'completed') {
+              clearInterval(interval)
+              setDuration(statusRes.data.duration)
+              setStatus('completed')
+              setLines(prev => [
+                ...prev,
+                { text: '', type: 'blank' },
+                { text: `[+] Attack completed in ${statusRes.data.duration}s`, type: 'success' },
+                { text: `[+] ${statusRes.data.total_lines} lines of output`, type: 'success' },
+                { text: `root@kali:~# _`, type: 'cmd' },
+              ])
+            } else if (statusRes.data.status === 'error' || statusRes.data.status === 'timeout') {
+              clearInterval(interval)
+              setStatus('error')
+              setLines(prev => [
+                ...prev,
+                { text: '', type: 'blank' },
+                { text: `[-] ${statusRes.data.errors || 'Attack failed'}`, type: 'error' },
+              ])
+            }
+          } catch {
+            clearInterval(interval)
+            setStatus('error')
+          }
+        }, 800)
+
+      } catch (err) {
+        setStatus('error')
+        setLines(prev => [...prev, { text: `[-] ${err.response?.data?.error || 'Connection failed'}`, type: 'error' }])
+      }
+    }
+
+    startAttack()
+    return () => { if (interval) clearInterval(interval) }
+  }, [attack])
+
+  useEffect(() => {
+    if (termRef.current) {
+      termRef.current.scrollTop = termRef.current.scrollHeight
+    }
+  }, [lines])
+
+  const lineClass = (type) => {
+    const map = {
+      cmd: 'term-cmd',
+      info: 'term-info',
+      success: 'term-success',
+      payload: 'term-payload',
+      error: 'term-error',
+      response: 'term-response',
+      output: 'term-output',
+      blank: 'term-blank',
+    }
+    return map[type] || 'term-output'
+  }
+
+  return (
+    <div className="terminal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="terminal-modal">
+        <div className="terminal-titlebar">
+          <div className="terminal-dots">
+            <span className="dot dot-red" onClick={onClose}></span>
+            <span className="dot dot-yellow"></span>
+            <span className="dot dot-green"></span>
+          </div>
+          <div className="terminal-title">
+            kali@attack-box: ~/{attack.id}_attack.sh
+          </div>
+          <div className="terminal-status-badge">
+            {status === 'running' || status === 'launching' ? (
+              <span className="term-status-running">RUNNING</span>
+            ) : status === 'completed' ? (
+              <span className="term-status-done">DONE {duration && `(${duration}s)`}</span>
+            ) : status === 'error' ? (
+              <span className="term-status-error">ERROR</span>
+            ) : (
+              <span className="term-status-running">CONNECTING</span>
+            )}
+          </div>
+        </div>
+        <div className="terminal-body" ref={termRef}>
+          {lines.map((line, i) => (
+            <div key={i} className={`term-line ${lineClass(line.type)}`}>
+              {line.text || '\u00A0'}
+            </div>
+          ))}
+          {(status === 'running' || status === 'launching') && (
+            <div className="term-line term-cursor">
+              <span className="cursor-blink">_</span>
+            </div>
+          )}
+        </div>
+        <div className="terminal-footer">
+          <span>KALI LINUX 2026.1 | {attack.kaliTools}</span>
+          <button className="terminal-close-btn" onClick={onClose}>
+            {status === 'completed' || status === 'error' ? 'CLOSE' : 'CLOSE (attack continues)'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ─── Home / Dashboard ─── */
 function Home() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [threatCount, setThreatCount] = useState(0)
+  const [kaliOnline, setKaliOnline] = useState(false)
+  const [activeTerminal, setActiveTerminal] = useState(null)
 
   useEffect(() => {
     axios.get(`${API_URL}/attacks`)
       .then(res => setThreatCount(res.data.attacks.length))
       .catch(() => {})
+    axios.get(`${API_URL}/kali-health`)
+      .then(() => setKaliOnline(true))
+      .catch(() => setKaliOnline(false))
   }, [])
 
   const attackModules = [
@@ -156,7 +311,8 @@ function Home() {
       description: 'Exploit vulnerable SQL queries to bypass authentication and extract database contents.',
       payload: "' OR '1'='1",
       severity: 'critical',
-      path: '/login'
+      path: '/login',
+      kaliTools: 'sqlmap + curl'
     },
     {
       id: 'xss',
@@ -165,7 +321,8 @@ function Home() {
       description: 'Inject malicious scripts into web pages to hijack sessions or steal cookies.',
       payload: '<script>alert("XSS")</script>',
       severity: 'high',
-      path: '/comments'
+      path: '/comments',
+      kaliTools: 'curl payloads'
     },
     {
       id: 'cmdi',
@@ -174,7 +331,8 @@ function Home() {
       description: 'Execute system commands through unsanitized input fields.',
       payload: '127.0.0.1 & whoami',
       severity: 'high',
-      path: '/ping'
+      path: '/ping',
+      kaliTools: 'curl payloads'
     },
     {
       id: 'csrf',
@@ -183,21 +341,36 @@ function Home() {
       description: 'Forge authenticated requests without CSRF token protection.',
       payload: 'auto-submit form',
       severity: 'medium',
-      path: '/transfer'
+      path: '/transfer',
+      kaliTools: 'curl forged requests'
     }
   ]
+
+  const handleTerminalClose = () => {
+    setActiveTerminal(null)
+    axios.get(`${API_URL}/attacks`)
+      .then(res => setThreatCount(res.data.attacks.length))
+      .catch(() => {})
+  }
 
   return (
     <div className="cyber-home">
       <MatrixBackground />
-      
+
+      {activeTerminal && (
+        <KaliTerminal
+          attack={activeTerminal}
+          onClose={handleTerminalClose}
+        />
+      )}
+
       <div className="hero-section">
         <div className="hero-content">
           <div className="hero-badge">
             <ThreatBadge level="detected" />
             <span>ATTACK DETECTION SYSTEM</span>
           </div>
-          
+
           <h1 className="hero-title">
             <GlitchText tag="span">THREAT</GlitchText>
             <br />
@@ -205,7 +378,7 @@ function Home() {
             <br />
             <span className="title-sub">LABORATORY</span>
           </h1>
-          
+
           <p className="hero-desc">
             Analyze and detect web application attacks in a controlled environment.
             Built with attack pattern recognition and real-time logging.
@@ -224,6 +397,12 @@ function Home() {
               <span className="stat-value">4</span>
               <span className="stat-label">DETECTION RULES</span>
             </div>
+            <div className="stat-box">
+              <span className={`stat-value ${kaliOnline ? 'text-green-400' : 'text-red-400'}`}>
+                {kaliOnline ? 'ONLINE' : 'OFFLINE'}
+              </span>
+              <span className="stat-label">KALI LINUX</span>
+            </div>
           </div>
         </div>
 
@@ -238,7 +417,7 @@ function Home() {
           ATTACK MODULES
           <span className="title-line"></span>
         </h2>
-        
+
         <div className="attacks-container">
           {attackModules.map((attack, index) => (
             <div key={attack.id} className="attack-card" style={{ animationDelay: `${index * 0.1}s` }}>
@@ -252,10 +431,20 @@ function Home() {
                 <span className="payload-label">PAYLOAD:</span>
                 <code>{attack.payload}</code>
               </div>
-              <button className="exploit-btn" onClick={() => navigate(attack.path)}>
-                <span className="exploit-icon">▶</span>
-                LAUNCH ATTACK
-              </button>
+              <div className="attack-buttons">
+                <button className="exploit-btn" onClick={() => navigate(attack.path)}>
+                  <span className="exploit-icon">▶</span>
+                  MANUAL ATTACK
+                </button>
+                <button
+                  className="exploit-btn kali-attack-btn"
+                  onClick={() => setActiveTerminal(attack)}
+                  disabled={!kaliOnline}
+                >
+                  <span className="exploit-icon">⚡</span>
+                  KALI ATTACK
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -267,7 +456,7 @@ function Home() {
           DETECTION ENGINE
           <span className="title-line"></span>
         </h2>
-        
+
         <div className="detection-cards">
           <div className="detection-card">
             <div className="det-icon">◉</div>
@@ -281,8 +470,8 @@ function Home() {
           </div>
           <div className="detection-card">
             <div className="det-icon">◉</div>
-            <h4>Alert System</h4>
-            <p>Immediate notification when attack patterns are detected</p>
+            <h4>Kali Linux Integration</h4>
+            <p>Docker-based Kali container with sqlmap, nikto, hydra, and nmap for real attacks</p>
           </div>
         </div>
       </div>
@@ -810,13 +999,18 @@ function AttackLog() {
   const [filter, setFilter] = useState('all')
 
   useEffect(() => {
-    axios.get(`${API_URL}/attacks`)
-      .then(res => setAttacks(res.data.attacks))
-      .catch(() => {})
+    const fetchAttacks = () => {
+      axios.get(`${API_URL}/attacks`)
+        .then(res => setAttacks(res.data.attacks))
+        .catch(() => {})
+    }
+    fetchAttacks()
+    const interval = setInterval(fetchAttacks, 3000)
+    return () => clearInterval(interval)
   }, [])
 
-  const filteredAttacks = filter === 'all' 
-    ? attacks 
+  const filteredAttacks = filter === 'all'
+    ? attacks
     : attacks.filter(a => a.type === filter)
 
   const threatColors = {
@@ -825,6 +1019,8 @@ function AttackLog() {
     COMMAND_INJECTION: 'high',
     CSRF: 'medium'
   }
+
+  const isKaliSource = (ua) => ua && (ua.includes('python-requests') || ua.includes('curl'))
 
   return (
     <div className="cyber-page">
@@ -837,29 +1033,35 @@ function AttackLog() {
           </div>
 
           <div className="filter-btns">
-            <button 
-              className={filter === 'all' ? 'active' : ''} 
+            <button
+              className={filter === 'all' ? 'active' : ''}
               onClick={() => setFilter('all')}
             >
               ALL
             </button>
-            <button 
-              className={filter === 'SQL_INJECTION' ? 'active' : ''} 
+            <button
+              className={filter === 'SQL_INJECTION' ? 'active' : ''}
               onClick={() => setFilter('SQL_INJECTION')}
             >
               SQLi
             </button>
-            <button 
-              className={filter === 'XSS' ? 'active' : ''} 
+            <button
+              className={filter === 'XSS' ? 'active' : ''}
               onClick={() => setFilter('XSS')}
             >
               XSS
             </button>
-            <button 
-              className={filter === 'COMMAND_INJECTION' ? 'active' : ''} 
+            <button
+              className={filter === 'COMMAND_INJECTION' ? 'active' : ''}
               onClick={() => setFilter('COMMAND_INJECTION')}
             >
               CMD
+            </button>
+            <button
+              className={filter === 'CSRF' ? 'active' : ''}
+              onClick={() => setFilter('CSRF')}
+            >
+              CSRF
             </button>
           </div>
         </div>
@@ -874,16 +1076,22 @@ function AttackLog() {
         ) : (
           <div className="threats-list">
             {filteredAttacks.map((attack, index) => (
-              <div key={index} className="threat-card">
+              <div key={index} className={`threat-card ${isKaliSource(attack.user_agent) ? 'kali-origin' : ''}`}>
                 <div className="threat-header">
                   <ThreatBadge level={threatColors[attack.type] || 'medium'} />
                   <span className="threat-type">{attack.type}</span>
                   <span className="threat-ip">from {attack.ip}</span>
+                  {isKaliSource(attack.user_agent) && (
+                    <span className="kali-badge">KALI LINUX</span>
+                  )}
                 </div>
                 <div className="threat-details">
                   <code>{attack.details}</code>
                 </div>
                 <div className="threat-meta">
+                  {attack.timestamp && (
+                    <span className="threat-time">{new Date(attack.timestamp).toLocaleString()}</span>
+                  )}
                   <span className="threat-agent">{attack.user_agent}</span>
                 </div>
               </div>
