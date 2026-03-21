@@ -74,6 +74,7 @@ def log_attack(attack_type, details, ip):
         'type': attack_type,
         'details': details,
         'ip': ip,
+        'timestamp': datetime.now().isoformat(),
         'user_agent': request.headers.get('User-Agent', 'Unknown'),
     }
     ATTACK_LOG.append(attack_info)
