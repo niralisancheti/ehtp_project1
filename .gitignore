@@ -39,3 +39,4 @@ dist/
 .env.production
 .env.staging
 *.db
+attack_log.txt
