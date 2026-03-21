@@ -4,6 +4,8 @@ import sqlite3
 import re
 import logging
 import os
+from datetime import datetime
+import requests as http_requests
 
 app = Flask(__name__)
 app.secret_key = 'educational-secret-key'
@@ -72,6 +74,7 @@ def log_attack(attack_type, details, ip):
         'type': attack_type,
         'details': details,
         'ip': ip,
+        'timestamp': datetime.now().isoformat(),
         'user_agent': request.headers.get('User-Agent', 'Unknown'),
     }
     ATTACK_LOG.append(attack_info)
@@ -128,7 +131,9 @@ def login():
 
     ip = request.remote_addr
 
-    # Detection is disabled (commented out) – keep it like that for demo
+    # Detect SQL injection (log it but still allow the query to execute for demo)
+    if detect_sql_injection(username) or detect_sql_injection(password):
+        log_attack('SQL_INJECTION', f'Login attempt: username={username}, password={password}', ip)
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -279,6 +284,49 @@ def dashboard():
         'products': [dict(row) for row in products]
     })
 
+KALI_URL = os.environ.get('KALI_URL', 'http://kali:8888')
+
+
+@app.route('/api/run-attack', methods=['POST'])
+def run_attack():
+    """Proxy attack requests to the Kali container."""
+    data = request.json or {}
+    attack_type = data.get('attack_type', '')
+
+    valid_types = ['sqli', 'xss', 'cmdi', 'csrf']
+    if attack_type not in valid_types:
+        return jsonify({'error': f'Invalid attack type. Must be one of: {valid_types}'}), 400
+
+    try:
+        resp = http_requests.post(f'{KALI_URL}/run/{attack_type}', json={}, timeout=60)
+        return jsonify(resp.json())
+    except http_requests.exceptions.ConnectionError:
+        return jsonify({'error': 'Kali attack container is not reachable. Is Docker running?'}), 503
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/attack-status/<job_id>', methods=['GET'])
+def attack_status(job_id):
+    """Check the status of a running attack job on the Kali container."""
+    try:
+        from_line = request.args.get('from_line', 0, type=int)
+        resp = http_requests.get(f'{KALI_URL}/status/{job_id}', params={'from_line': from_line}, timeout=10)
+        return jsonify(resp.json())
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/kali-health', methods=['GET'])
+def kali_health():
+    """Check if the Kali container is reachable."""
+    try:
+        resp = http_requests.get(f'{KALI_URL}/health', timeout=5)
+        return jsonify(resp.json())
+    except Exception:
+        return jsonify({'status': 'offline', 'error': 'Kali container not reachable'}), 503
+
+
 if __name__ == '__main__':
     setup_database()
-    app.run(debug=False, port=5001)
+    app.run(debug=False, host='0.0.0.0', port=5001)

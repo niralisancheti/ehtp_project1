@@ -1,0 +1,47 @@
+# Docker Compose
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    networks:
+      - ehtp_net
+    volumes:
+      - backend_data:/app/data
+    environment:
+      - FLASK_ENV=development
+      - KALI_URL=http://kali:8888
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    networks:
+      - ehtp_net
+    depends_on:
+      - backend
+
+  kali:
+    build:
+      context: ./kali
+      dockerfile: Dockerfile
+    networks:
+      - ehtp_net
+    depends_on:
+      - backend
+    ports:
+      - "8888:8888"
+    environment:
+      - TARGET_URL=http://backend:5001
+
+networks:
+  ehtp_net:
+    driver: bridge
+
+volumes:
+  backend_data:

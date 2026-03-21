@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @theme {
   --font-display: 'Orbitron', sans-serif;
-  --font-mono: 'Share Tech Mono', monospace;
-  --font-body: 'Rajdhani', sans-serif;
-  
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-body: 'Inter', sans-serif;
+
   --color-bg: #030811;
   --color-surface: #0a1628;
   --color-surface-light: #0f2240;
   --color-border: #1a3a5c;
   --color-border-glow: #00ffff22;
-  
+
   --color-cyan: #00ffff;
   --color-cyan-dim: #00ffff88;
   --color-green: #00ff66;
@@ -22,9 +22,9 @@
   --color-amber: #ffaa00;
   --color-amber-dim: #ffaa0044;
   --color-purple: #9933ff;
-  --color-text: #00ffff;
-  --color-text-dim: #6699aa;
-  --color-text-muted: #446688;
+  --color-text: #d0f0ff;
+  --color-text-dim: #8ab4c8;
+  --color-text-muted: #5a8aa0;
 }
 
 * {
@@ -34,10 +34,13 @@
 
 body {
   font-family: var(--font-body);
+  font-size: 16px;
   background-color: var(--color-bg);
   color: var(--color-text);
   min-height: 100vh;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ─── Matrix Rain Background ─── */
@@ -165,7 +168,7 @@ body {
 .nav-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 24px;
   height: 70px;
   display: flex;
   align-items: center;
@@ -201,19 +204,20 @@ body {
 }
 
 .nav-link {
-  font-family: var(--font-display);
-  font-size: 0.75rem;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
   font-weight: 600;
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
   color: var(--color-text-muted);
   text-decoration: none;
-  padding: 10px 16px;
+  padding: 10px 18px;
   border: 1px solid transparent;
   border-radius: 4px;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
   gap: 8px;
+  text-transform: uppercase;
 }
 
 .nav-link:hover,
@@ -229,18 +233,19 @@ body {
 }
 
 .nav-logout {
-  font-family: var(--font-display);
-  font-size: 0.7rem;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
   font-weight: 600;
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
   color: var(--color-red);
   background: transparent;
   border: 1px solid var(--color-red);
-  padding: 8px 14px;
+  padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
   margin-left: 20px;
   transition: all 0.3s ease;
+  text-transform: uppercase;
 }
 
 .nav-logout:hover {
@@ -253,7 +258,7 @@ body {
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--color-green);
 }
 
@@ -303,9 +308,9 @@ body {
   align-items: center;
   gap: 12px;
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--color-text-dim);
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .hero-title {
@@ -328,11 +333,12 @@ body {
 }
 
 .hero-desc {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   color: var(--color-text-dim);
-  line-height: 1.8;
+  line-height: 1.85;
   max-width: 600px;
   margin-bottom: 40px;
+  font-weight: 400;
 }
 
 .hero-stats {
@@ -358,9 +364,10 @@ body {
 
 .stat-label {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   color: var(--color-text-muted);
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
+  margin-top: 4px;
 }
 
 /* ─── Radar ─── */
@@ -426,16 +433,16 @@ body {
 /* ─── Section Title ─── */
 .section-title {
   font-family: var(--font-display);
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 700;
   text-align: center;
-  color: var(--color-text);
-  letter-spacing: 5px;
-  margin: 60px 0 40px;
+  color: var(--color-cyan);
+  letter-spacing: 4px;
+  margin: 70px 0 45px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 24px;
 }
 
 .title-line {
@@ -494,24 +501,25 @@ body {
 
 .attack-type {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   color: var(--color-text-muted);
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 }
 
 .attack-title {
   font-family: var(--font-display);
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--color-text);
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .attack-desc {
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: var(--color-text-dim);
-  line-height: 1.6;
-  margin-bottom: 20px;
+  line-height: 1.7;
+  margin-bottom: 22px;
+  font-weight: 400;
 }
 
 .payload-box {
@@ -523,35 +531,41 @@ body {
 
 .payload-label {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   color: var(--color-red);
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
 }
 
 .payload-box code {
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--color-amber);
   word-break: break-all;
 }
 
+.attack-buttons {
+  display: flex;
+  gap: 8px;
+}
+
 .exploit-btn {
-  width: 100%;
-  font-family: var(--font-display);
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 2px;
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
   color: var(--color-bg);
   background: var(--color-cyan);
   border: none;
-  padding: 14px 20px;
+  padding: 14px 18px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   transition: all 0.3s ease;
 }
 
@@ -560,18 +574,280 @@ body {
   box-shadow: 0 0 30px var(--color-cyan);
 }
 
+.exploit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.exploit-btn:disabled:hover {
+  box-shadow: none;
+}
+
+.kali-attack-btn {
+  background: linear-gradient(135deg, var(--color-red), #cc0000);
+  color: white;
+}
+
+.kali-attack-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ff1144, var(--color-red));
+  box-shadow: 0 0 30px var(--color-red-dim);
+}
+
+.attack-job-status {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: var(--color-bg);
+  border-left: 3px solid currentColor;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status-indicator {
+  font-size: 0.9rem;
+}
+
+.kali-tool-tag {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  margin-left: auto;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
 .exploit-icon {
   font-size: 0.7rem;
 }
 
+/* ─── Kali Terminal Modal ─── */
+.terminal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: overlayFadeIn 0.2s ease;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.terminal-modal {
+  width: 100%;
+  max-width: 900px;
+  height: 75vh;
+  background: #0a0e14;
+  border: 1px solid var(--color-cyan);
+  box-shadow: 0 0 60px rgba(0, 255, 255, 0.15), 0 0 2px var(--color-cyan);
+  display: flex;
+  flex-direction: column;
+  animation: terminalSlideIn 0.3s ease;
+}
+
+@keyframes terminalSlideIn {
+  from { transform: translateY(30px) scale(0.97); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.terminal-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #111820;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.terminal-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.dot-red { background: #ff5f56; }
+.dot-yellow { background: #ffbd2e; }
+.dot-green { background: #27c93f; }
+
+.terminal-title {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  color: var(--color-text-dim);
+  flex: 1;
+}
+
+.terminal-status-badge {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.term-status-running {
+  color: var(--color-amber);
+  animation: statusPulse 1.5s ease infinite;
+}
+
+.term-status-done {
+  color: var(--color-green);
+}
+
+.term-status-error {
+  color: var(--color-red);
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.terminal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 22px;
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  line-height: 1.85;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.term-line {
+  white-space: pre-wrap;
+  word-break: break-all;
+  padding: 1px 0;
+}
+
+.term-cmd {
+  color: var(--color-green);
+  font-weight: 700;
+}
+
+.term-info {
+  color: var(--color-cyan);
+}
+
+.term-success {
+  color: var(--color-green);
+}
+
+.term-payload {
+  color: var(--color-amber);
+}
+
+.term-error {
+  color: var(--color-red);
+}
+
+.term-response {
+  color: #8899aa;
+  font-size: 0.82rem;
+}
+
+.term-output {
+  color: #c0c8d0;
+}
+
+.term-blank {
+  height: 0.5em;
+}
+
+.term-cursor .cursor-blink {
+  animation: blink 1s step-end infinite;
+  color: var(--color-green);
+  font-weight: 700;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.terminal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 22px;
+  background: #111820;
+  border-top: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.terminal-close-btn {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-dim);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 6px 18px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.terminal-close-btn:hover {
+  color: var(--color-cyan);
+  border-color: var(--color-cyan);
+}
+
+/* ─── Kali Badge ─── */
+.kali-badge {
+  background: var(--color-red);
+  color: white;
+  padding: 4px 10px;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  border-radius: 2px;
+  margin-left: auto;
+  box-shadow: 0 0 10px var(--color-red-dim);
+  text-transform: uppercase;
+}
+
+.threat-card.kali-origin {
+  border-left: 3px solid var(--color-red);
+}
+
+.threat-time {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--color-text-dim);
+  margin-right: 12px;
+}
+
 /* ─── Threat Badge ─── */
 .threat-badge {
-  font-family: var(--font-display);
-  font-size: 0.6rem;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 2px;
-  padding: 5px 10px;
+  letter-spacing: 1.5px;
+  padding: 5px 12px;
   border-radius: 2px;
+  text-transform: uppercase;
 }
 
 .threat-critical {
@@ -634,16 +910,17 @@ body {
 
 .detection-card h4 {
   font-family: var(--font-display);
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 12px;
   color: var(--color-text);
 }
 
 .detection-card p {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: var(--color-text-dim);
-  line-height: 1.6;
+  line-height: 1.7;
+  font-weight: 400;
 }
 
 /* ─── Auth Container ─── */
@@ -678,7 +955,8 @@ body {
 .auth-header p,
 .vuln-header p {
   color: var(--color-text-dim);
-  font-size: 0.95rem;
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
 /* ─── Alert Boxes ─── */
@@ -738,8 +1016,8 @@ body {
 
 .form-group label {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 2px;
+  font-size: 0.82rem;
+  letter-spacing: 1.5px;
   color: var(--color-text-muted);
 }
 
@@ -767,11 +1045,12 @@ body {
 
 /* ─── Cyber Buttons ─── */
 .cyber-btn {
-  font-family: var(--font-display);
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 2px;
-  padding: 14px 24px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 14px 26px;
   border: none;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -805,7 +1084,7 @@ body {
 
 .inject-btn {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   letter-spacing: 1px;
   color: var(--color-red);
   background: transparent;
@@ -827,7 +1106,7 @@ body {
 
 .test-accounts {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   color: var(--color-text-muted);
   margin-bottom: 15px;
 }
@@ -872,9 +1151,10 @@ body {
 
 .stat-card .stat-label {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   color: var(--color-text-muted);
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
+  margin-top: 4px;
 }
 
 /* ─── Actions Grid ─── */
@@ -912,24 +1192,25 @@ body {
 .action-label {
   font-family: var(--font-display);
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-text);
   letter-spacing: 1px;
 }
 
 .action-hint {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   color: var(--color-red);
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 }
 
 /* ─── Transactions ─── */
 .transactions-section h2 {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: 2px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
   color: var(--color-text-muted);
   margin-bottom: 15px;
 }
@@ -953,7 +1234,7 @@ body {
 
 .tx-date {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   color: var(--color-text-muted);
 }
 
@@ -998,7 +1279,7 @@ body {
 
 .result-id {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   color: var(--color-text-muted);
 }
 
@@ -1008,7 +1289,7 @@ body {
 }
 
 .result-email {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--color-text-dim);
   margin-left: auto;
 }
@@ -1019,10 +1300,11 @@ body {
 }
 
 .comments-list h3 {
-  font-family: var(--font-display);
-  font-size: 0.9rem;
-  font-weight: 600;
-  letter-spacing: 2px;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
   color: var(--color-text-muted);
   margin-bottom: 15px;
 }
@@ -1038,12 +1320,12 @@ body {
 
 .comment-id {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   color: var(--color-text-muted);
 }
 
 .comment-content {
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: var(--color-text);
   word-break: break-all;
 }
@@ -1057,24 +1339,25 @@ body {
 
 .terminal-header {
   background: var(--color-surface-light);
-  padding: 8px 12px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--color-border);
 }
 
-.terminal-title {
+.terminal-output .terminal-title {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--color-green);
   letter-spacing: 1px;
 }
 
 .terminal-output pre {
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--color-green);
-  padding: 15px;
+  padding: 18px;
   white-space: pre-wrap;
   overflow-x: auto;
+  line-height: 1.7;
 }
 
 /* ─── CSRF Demo ─── */
@@ -1089,15 +1372,16 @@ body {
 .csrf-demo h3 {
   font-family: var(--font-display);
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-red);
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .csrf-demo p {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: var(--color-text-dim);
   margin-bottom: 20px;
+  line-height: 1.6;
 }
 
 /* ─── Threats Page ─── */
@@ -1125,9 +1409,9 @@ body {
 
 .threat-count {
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   color: var(--color-red);
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 }
 
 .filter-btns {
@@ -1136,14 +1420,15 @@ body {
 }
 
 .filter-btns button {
-  font-family: var(--font-display);
-  font-size: 0.7rem;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 1px;
+  text-transform: uppercase;
   color: var(--color-text-muted);
   background: transparent;
   border: 1px solid var(--color-border);
-  padding: 8px 14px;
+  padding: 8px 16px;
   cursor: pointer;
   transition: all 0.3s ease;
 }
@@ -1203,14 +1488,15 @@ body {
 
 .threat-type {
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   color: var(--color-text);
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
+  font-weight: 500;
 }
 
 .threat-ip {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   color: var(--color-text-muted);
   margin-left: auto;
 }
@@ -1224,18 +1510,23 @@ body {
 
 .threat-details code {
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--color-red);
   word-break: break-all;
+  line-height: 1.6;
 }
 
 .threat-meta {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.78rem;
   color: var(--color-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 /* ─── Responsive ─── */

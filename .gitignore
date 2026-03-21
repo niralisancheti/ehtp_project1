@@ -38,3 +38,5 @@ dist/
 .env.local
 .env.production
 .env.staging
+*.db
+attack_log.txt
