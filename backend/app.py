@@ -131,7 +131,9 @@ def login():
 
     ip = request.remote_addr
 
-    # Detection is disabled (commented out) – keep it like that for demo
+    # Detect SQL injection (log it but still allow the query to execute for demo)
+    if detect_sql_injection(username) or detect_sql_injection(password):
+        log_attack('SQL_INJECTION', f'Login attempt: username={username}, password={password}', ip)
 
     conn = get_db_connection()
     cursor = conn.cursor()
