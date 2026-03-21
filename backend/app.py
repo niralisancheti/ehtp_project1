@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, session
+from flask import Flask, redirect, request, jsonify, session
 from flask_cors import CORS
 import sqlite3
 import re
@@ -114,40 +114,42 @@ def setup_database():
     conn.commit()
     conn.close()
 
-@app.route('/api/init', methods=['GET'])
-def init_db():
-    setup_database()
-    return jsonify({'message': 'Database initialized'})
-
 @app.route('/api/login', methods=['POST'])
 def login():
-    data = request.json
-    username = data.get('username', '')
-    password = data.get('password', '')
-    
+    # If frontend sends JSON:
+    data = request.get_json()
+    if not data:
+        # Fallback to form data if needed
+        username = request.form.get('username')
+        password = request.form.get('password')
+    else:
+        username = data.get('username')
+        password = data.get('password')
+
     ip = request.remote_addr
-    
-    if detect_sql_injection(username) or detect_sql_injection(password):
-        log_attack('SQL_INJECTION', f'Username: {username}, Password: {password}', ip)
-        return jsonify({'error': 'SQL Injection attempt detected!', 'attack': True}), 400
-    
+
+    # Detection is disabled (commented out) – keep it like that for demo
+
     conn = get_db_connection()
     cursor = conn.cursor()
+
+    # Vulnerable query – concatenates user input
     query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
     
     try:
         cursor.execute(query)
         user = cursor.fetchone()
         conn.close()
-        
+
         if user:
             session['user'] = user['username']
-            return jsonify({'message': f'Welcome {user["username"]}!', 'user': user['username'], 'success': True})
+            return jsonify({'success': True, 'user': user['username']})
         else:
-            return jsonify({'error': 'Invalid credentials'}), 401
+            return jsonify({'success': False, 'message': 'Authentication failed'}), 401
+
     except Exception as e:
         conn.close()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/search', methods=['POST'])
 def search():

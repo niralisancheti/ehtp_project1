@@ -2,12 +2,16 @@ import sqlite3
 import os
 import re
 import logging
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired
+from flask_cors import CORS
 import bleach
+
+app = Flask(__name__)
+CORS(app)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'educational-secret-key-do-not-use-in-production'
@@ -105,15 +109,13 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        if detect_sql_injection(username) or detect_sql_injection(password):
-            ip = request.remote_addr
-            log_attack('SQL_INJECTION', f'Username: {username}, Password: {password}', ip)
-            flash('SQL Injection attempt detected!', 'danger')
-            return redirect(url_for('login'))
-        
         conn = sqlite3.connect('app.db')
         cursor = conn.cursor()
         query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
+        
+        if detect_sql_injection(username) or detect_sql_injection(password):
+            ip = request.remote_addr
+            log_attack('SQL_INJECTION', f'Username: {username}, Password: {password}', ip)
         
         try:
             cursor.execute(query)
@@ -240,6 +242,150 @@ def logout():
     flash('Logged out successfully', 'info')
     return redirect(url_for('index'))
 
+# API Routes for Frontend
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    
+    conn = sqlite3.connect('app.db')
+    cursor = conn.cursor()
+    query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
+    
+    is_sql_injection = detect_sql_injection(username) or detect_sql_injection(password)
+    
+    if is_sql_injection:
+        ip = request.remote_addr
+        log_attack('SQL_INJECTION', f'Username: {username}, Password: {password}', ip)
+    
+    try:
+        cursor.execute(query)
+        user = cursor.fetchone()
+        conn.close()
+        
+        if user:
+            session['user'] = user[1]
+            return jsonify({'user': user[1], 'attack': is_sql_injection})
+        else:
+            return jsonify({'error': 'Invalid credentials', 'attack': is_sql_injection}), 401
+    except Exception as e:
+        conn.close()
+        return jsonify({'error': str(e), 'attack': is_sql_injection}), 401
+
+@app.route('/api/dashboard', methods=['GET'])
+def api_dashboard():
+    user = request.args.get('user')
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    conn = sqlite3.connect('app.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, email FROM users")
+    users = [{'id': u[0], 'username': u[1], 'email': u[2]} for u in cursor.fetchall()]
+    
+    transactions = [
+        {'id': 1, 'date': '2024-01-15', 'description': 'Initial deposit', 'amount': 1000},
+        {'id': 2, 'date': '2024-01-16', 'description': 'Book purchase', 'amount': -50},
+        {'id': 3, 'date': '2024-01-17', 'description': 'Assignment fee', 'amount': -25},
+    ]
+    
+    conn.close()
+    return jsonify({'balance': 925.00, 'transactions': transactions, 'users': users})
+
+@app.route('/api/search', methods=['POST'])
+def api_search():
+    data = request.get_json()
+    query = data.get('query')
+    
+    is_xss = detect_xss(query)
+    
+    if is_xss:
+        ip = request.remote_addr
+        log_attack('XSS', f'Search query: {query}', ip)
+        return jsonify({'error': 'XSS attack attempt detected!', 'attack': True}), 400
+    
+    conn = sqlite3.connect('app.db')
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT id, username, email FROM users WHERE username LIKE '%{query}%' OR email LIKE '%{query}%'")
+    results = [{'id': u[0], 'username': u[1], 'email': u[2]} for u in cursor.fetchall()]
+    conn.close()
+    
+    return jsonify({'results': results})
+
+@app.route('/api/comments', methods=['GET', 'POST'])
+def api_comments():
+    conn = sqlite3.connect('app.db')
+    cursor = conn.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, comment TEXT)")
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        comment = data.get('comment')
+        
+        is_xss = detect_xss(comment)
+        
+        if is_xss:
+            ip = request.remote_addr
+            log_attack('XSS', f'Comment: {comment}', ip)
+            conn.close()
+            return jsonify({'error': 'XSS attack attempt detected in comment!', 'attack': True}), 400
+        
+        cursor.execute("INSERT INTO comments (comment) VALUES (?)", (comment,))
+        conn.commit()
+    
+    cursor.execute("SELECT * FROM comments")
+    comments = [{'id': c[0], 'comment': c[1]} for c in cursor.fetchall()]
+    conn.close()
+    
+    return jsonify({'comments': comments})
+
+@app.route('/api/ping', methods=['POST'])
+def api_ping():
+    data = request.get_json()
+    host = data.get('host')
+    
+    is_cmd_injection = detect_command_injection(host)
+    
+    if is_cmd_injection:
+        ip = request.remote_addr
+        log_attack('COMMAND_INJECTION', f'Host: {host}', ip)
+        return jsonify({'error': 'Command Injection attempt detected!', 'attack': True}), 400
+    
+    import subprocess
+    import platform
+    try:
+        count_flag = '-n' if platform.system().lower() == 'windows' else '-c'
+        result = subprocess.check_output(['ping', count_flag, '1', host],
+                                       stderr=subprocess.STDOUT, text=True, timeout=5)
+    except Exception as e:
+        result = str(e)
+    
+    return jsonify({'result': result})
+
+@app.route('/api/transfer', methods=['POST'])
+def api_transfer():
+    data = request.get_json()
+    to_user = data.get('to_user')
+    amount = data.get('amount')
+    simulate_csrf = data.get('simulate_csrf', False)
+    
+    if simulate_csrf:
+        ip = request.remote_addr
+        log_attack('CSRF', f'Transfer of ${amount} to {to_user}', ip)
+        return jsonify({
+            'message': f'Transfer of ${amount} to {to_user} initiated',
+            'warning': 'CSRF vulnerability - no token protection',
+            'attack': True,
+            'attack_detail': f'Forged transfer request detected: ${amount} to {to_user}'
+        })
+    
+    return jsonify({'message': f'Transfer of ${amount} to {to_user} initiated'})
+
+@app.route('/api/attacks', methods=['GET'])
+def api_attacks():
+    return jsonify({'attacks': ATTACK_LOG})
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
@@ -247,14 +393,28 @@ if __name__ == '__main__':
         conn = sqlite3.connect('app.db')
         cursor = conn.cursor()
         cursor.execute("CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, comment TEXT)")
+        cursor.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT, password TEXT, email TEXT)")
         
-        cursor.execute("SELECT * FROM users WHERE username = 'admin'")
-        if not cursor.fetchone():
+        cursor.execute("SELECT COUNT(*) FROM users")
+        if cursor.fetchone()[0] == 0:
             cursor.execute("INSERT INTO users (username, password, email) VALUES ('admin', 'admin123', 'admin@example.com')")
             cursor.execute("INSERT INTO users (username, password, email) VALUES ('john', 'john123', 'john@example.com')")
             cursor.execute("INSERT INTO users (username, password, email) VALUES ('jane', 'jane123', 'jane@example.com')")
+            cursor.execute("INSERT INTO users (username, password, email) VALUES ('alice', 'alice123', 'alice@example.com')")
+            cursor.execute("INSERT INTO users (username, password, email) VALUES ('bob', 'bob123', 'bob@example.com')")
+            cursor.execute("INSERT INTO users (username, password, email) VALUES ('charlie', 'charlie123', 'charlie@example.com')")
+            cursor.execute("INSERT INTO users (username, password, email) VALUES ('david', 'david123', 'david@example.com')")
+            cursor.execute("INSERT INTO users (username, password, email) VALUES ('emma', 'emma123', 'emma@example.com')")
+        
+        cursor.execute("SELECT COUNT(*) FROM comments")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("INSERT INTO comments (comment) VALUES ('Welcome to the Student Portal!')")
+            cursor.execute("INSERT INTO comments (comment) VALUES ('This is a great platform for students.')")
+            cursor.execute("INSERT INTO comments (comment) VALUES ('Looking forward to using this portal.')")
+            cursor.execute("INSERT INTO comments (comment) VALUES ('Please upload your assignments here.')")
+            cursor.execute("INSERT INTO comments (comment) VALUES ('Contact admin for any issues.')")
         
         conn.commit()
         conn.close()
     
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001, host='0.0.0.0')
