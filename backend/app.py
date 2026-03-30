@@ -4,12 +4,19 @@ import sqlite3
 import re
 import logging
 import os
+import html
+import secrets
 from datetime import datetime
 import requests as http_requests
 
 app = Flask(__name__)
 app.secret_key = 'educational-secret-key'
 CORS(app, supports_credentials=True)
+
+# ─── Project 2: Prevention Mode ───
+prevention_mode = {'enabled': False}
+PREVENTION_LOG = []
+csrf_tokens = {}
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -80,6 +87,23 @@ def log_attack(attack_type, details, ip):
     ATTACK_LOG.append(attack_info)
     logging.warning(f"{attack_type} detected from {ip}: {details}")
 
+def log_prevention(attack_type, details, method):
+    PREVENTION_LOG.append({
+        'type': attack_type, 'details': details, 'method': method,
+        'ip': request.remote_addr, 'timestamp': datetime.now().isoformat(),
+    })
+    logging.info(f"PREVENTED {attack_type} using {method}: {details}")
+
+def sanitize_html(text):
+    return html.escape(str(text))
+
+def validate_hostname(host):
+    ip_pat = r'^(\d{1,3}\.){3}\d{1,3}$'
+    host_pat = r'^[a-zA-Z0-9][a-zA-Z0-9.\-]{0,253}[a-zA-Z0-9]$'
+    if re.match(ip_pat, host):
+        return all(0 <= int(p) <= 255 for p in host.split('.'))
+    return bool(re.match(host_pat, host))
+
 def setup_database():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -117,12 +141,26 @@ def setup_database():
     conn.commit()
     conn.close()
 
+@app.route('/api/prevention', methods=['GET', 'POST'])
+def toggle_prevention():
+    if request.method == 'POST':
+        prevention_mode['enabled'] = (request.json or {}).get('enabled', False)
+    return jsonify({'enabled': prevention_mode['enabled']})
+
+@app.route('/api/prevention-log', methods=['GET'])
+def get_prevention_log():
+    return jsonify({'preventions': PREVENTION_LOG})
+
+@app.route('/api/csrf-token', methods=['GET'])
+def get_csrf_token():
+    token = secrets.token_hex(32)
+    csrf_tokens[token] = True
+    return jsonify({'token': token})
+
 @app.route('/api/login', methods=['POST'])
 def login():
-    # If frontend sends JSON:
     data = request.get_json()
     if not data:
-        # Fallback to form data if needed
         username = request.form.get('username')
         password = request.form.get('password')
     else:
@@ -130,97 +168,153 @@ def login():
         password = data.get('password')
 
     ip = request.remote_addr
+    sqli_detected = detect_sql_injection(username) or detect_sql_injection(password)
 
-    # Detect SQL injection (log it but still allow the query to execute for demo)
-    if detect_sql_injection(username) or detect_sql_injection(password):
-        log_attack('SQL_INJECTION', f'Login attempt: username={username}, password={password}', ip)
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    # Vulnerable query – concatenates user input
-    query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
-    
-    try:
-        cursor.execute(query)
+    if prevention_mode['enabled']:
+        # P2 PREVENTION: Parameterized queries
+        if sqli_detected:
+            log_prevention('SQL_INJECTION', f'Username: {username}, Password: {password}',
+                           'Parameterized Query (? placeholders)')
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
         user = cursor.fetchone()
         conn.close()
-
         if user:
             session['user'] = user['username']
-            return jsonify({'success': True, 'user': user['username']})
+            return jsonify({'success': True, 'user': user['username'],
+                            'prevented': sqli_detected,
+                            'prevention_method': 'Parameterized query — SQL payload treated as literal string' if sqli_detected else None})
         else:
-            return jsonify({'success': False, 'message': 'Authentication failed'}), 401
-
-    except Exception as e:
-        conn.close()
-        return jsonify({'success': False, 'error': str(e)}), 500
+            return jsonify({'success': False, 'message': 'Authentication failed',
+                            'prevented': sqli_detected,
+                            'prevention_method': 'Parameterized query — injection rejected, login correctly denied' if sqli_detected else None}), 401
+    else:
+        # P1 VULNERABLE: String concatenation
+        if sqli_detected:
+            log_attack('SQL_INJECTION', f'Login attempt: username={username}, password={password}', ip)
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
+        try:
+            cursor.execute(query)
+            user = cursor.fetchone()
+            conn.close()
+            if user:
+                session['user'] = user['username']
+                return jsonify({'success': True, 'user': user['username']})
+            else:
+                return jsonify({'success': False, 'message': 'Authentication failed'}), 401
+        except Exception as e:
+            conn.close()
+            return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/search', methods=['POST'])
 def search():
     data = request.json
     query = data.get('query', '')
-    
     ip = request.remote_addr
-    
-    if detect_xss(query):
-        log_attack('XSS', f'Search query: {query}', ip)
-        return jsonify({'error': 'XSS attack attempt detected!', 'attack': True}), 400
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(f"SELECT * FROM users WHERE username LIKE '%{query}%' OR email LIKE '%{query}%'")
-    results = cursor.fetchall()
-    conn.close()
-    
-    return jsonify({'results': [dict(row) for row in results]})
+    xss_detected = detect_xss(query)
+
+    if prevention_mode['enabled']:
+        # P2 PREVENTION: Parameterized query + HTML sanitization
+        if xss_detected:
+            log_prevention('XSS', f'Search query: {query}', 'html.escape() + Parameterized query')
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE username LIKE ? OR email LIKE ?",
+                       (f'%{query}%', f'%{query}%'))
+        results = cursor.fetchall()
+        conn.close()
+        sanitized = [{'id': r['id'], 'username': sanitize_html(r['username']),
+                       'email': sanitize_html(r['email'])} for r in results]
+        return jsonify({'results': sanitized, 'prevented': xss_detected,
+                        'prevention_method': f'Input sanitized: "{query}" -> "{sanitize_html(query)}"' if xss_detected else None})
+    else:
+        # P1 VULNERABLE
+        if xss_detected:
+            log_attack('XSS', f'Search query: {query}', ip)
+            return jsonify({'error': 'XSS attack attempt detected!', 'attack': True}), 400
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT * FROM users WHERE username LIKE '%{query}%' OR email LIKE '%{query}%'")
+        results = cursor.fetchall()
+        conn.close()
+        return jsonify({'results': [dict(row) for row in results]})
 
 @app.route('/api/comments', methods=['GET', 'POST'])
 def comments():
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     if request.method == 'POST':
         data = request.json
         comment = data.get('comment', '')
-        
         ip = request.remote_addr
-        
-        if detect_xss(comment):
-            log_attack('XSS', f'Comment: {comment}', ip)
+        xss_detected = detect_xss(comment)
+
+        if prevention_mode['enabled']:
+            # P2 PREVENTION: Sanitize before storage
+            sanitized = sanitize_html(comment)
+            if xss_detected:
+                log_prevention('XSS', f'Comment: {comment}', 'html.escape() before storage (stored XSS prevention)')
+            cursor.execute("INSERT INTO comments (comment) VALUES (?)", (sanitized,))
+            conn.commit()
+            cursor.execute("SELECT * FROM comments")
+            cl = cursor.fetchall()
             conn.close()
-            return jsonify({'error': 'XSS attack attempt detected in comment!', 'attack': True}), 400
-        
-        cursor.execute("INSERT INTO comments (comment) VALUES (?)", (comment,))
-        conn.commit()
-    
+            return jsonify({'comments': [dict(r) for r in cl], 'prevented': xss_detected,
+                            'prevention_method': f'Sanitized: "{comment}" -> "{sanitized}"' if xss_detected else None})
+        else:
+            # P1 VULNERABLE
+            if xss_detected:
+                log_attack('XSS', f'Comment: {comment}', ip)
+                conn.close()
+                return jsonify({'error': 'XSS attack attempt detected in comment!', 'attack': True}), 400
+            cursor.execute("INSERT INTO comments (comment) VALUES (?)", (comment,))
+            conn.commit()
+
     cursor.execute("SELECT * FROM comments")
     comments_list = cursor.fetchall()
     conn.close()
-    
     return jsonify({'comments': [dict(row) for row in comments_list]})
 
 @app.route('/api/ping', methods=['POST'])
 def ping():
     data = request.json
     host = data.get('host', '')
-    
     ip = request.remote_addr
-    
-    if detect_command_injection(host):
-        log_attack('COMMAND_INJECTION', f'Host: {host}', ip)
-        return jsonify({'error': 'Command Injection attempt detected!', 'attack': True}), 400
-    
-    import subprocess
-    import platform
-    try:
-        count_flag = '-n' if platform.system().lower() == 'windows' else '-c'
-        output = subprocess.check_output(['ping', count_flag, '1', host],
-                                         stderr=subprocess.STDOUT,
-                                         text=True, timeout=5)
-        return jsonify({'result': output})
-    except Exception as e:
-        return jsonify({'result': str(e)})
+    cmdi_detected = detect_command_injection(host)
+
+    if prevention_mode['enabled']:
+        # P2 PREVENTION: Whitelist validation
+        if not validate_hostname(host):
+            if cmdi_detected:
+                log_prevention('COMMAND_INJECTION', f'Host: {host}', 'Whitelist validation — only valid hostnames/IPs allowed')
+            return jsonify({'result': f'Invalid hostname: "{host}" — only valid IPs and hostnames allowed.',
+                            'prevented': cmdi_detected,
+                            'prevention_method': 'Rejected by whitelist — only alphanumeric, dots, hyphens permitted' if cmdi_detected else 'Invalid format'})
+        import subprocess, platform
+        try:
+            count_flag = '-n' if platform.system().lower() == 'windows' else '-c'
+            output = subprocess.check_output(['ping', count_flag, '1', host],
+                                             stderr=subprocess.STDOUT, text=True, timeout=5)
+            return jsonify({'result': output, 'prevented': False})
+        except Exception as e:
+            return jsonify({'result': str(e)})
+    else:
+        # P1 VULNERABLE
+        if cmdi_detected:
+            log_attack('COMMAND_INJECTION', f'Host: {host}', ip)
+            return jsonify({'error': 'Command Injection attempt detected!', 'attack': True}), 400
+        import subprocess, platform
+        try:
+            count_flag = '-n' if platform.system().lower() == 'windows' else '-c'
+            output = subprocess.check_output(['ping', count_flag, '1', host],
+                                             stderr=subprocess.STDOUT, text=True, timeout=5)
+            return jsonify({'result': output})
+        except Exception as e:
+            return jsonify({'result': str(e)})
 
 @app.route('/api/transfer', methods=['POST'])
 def transfer():
@@ -228,28 +322,40 @@ def transfer():
     to_user = data.get('to_user', '')
     amount = data.get('amount', '')
     simulate = data.get('simulate_csrf', False)
-
     ip = request.remote_addr
-    csrf_token = request.headers.get('X-CSRF-Token', '')
 
-    if simulate:
-        log_attack('CSRF', f'Simulated external site forged transfer of ${amount} to {to_user} (no CSRF token)', ip)
-        return jsonify({
-            'message': f'Transfer of ${amount} to {to_user} went through!',
-            'attack': True,
-            'attack_detail': 'CSRF attack succeeded — no token validation stopped the forged request.',
-            'success': True
-        })
-
-    if not csrf_token:
-        log_attack('CSRF', f'Transfer of ${amount} to {to_user} completed without CSRF token', ip)
-        return jsonify({
-            'message': f'Transfer of ${amount} to {to_user} initiated',
-            'warning': 'No CSRF token was sent — this request could be forged by an external site.',
-            'success': True
-        })
-
-    return jsonify({'message': f'Transfer of ${amount} to {to_user} initiated', 'success': True})
+    if prevention_mode['enabled']:
+        # P2 PREVENTION: CSRF token validation
+        csrf_token = request.headers.get('X-CSRF-Token', '')
+        if simulate:
+            log_prevention('CSRF', f'Blocked forged transfer of ${amount} to {to_user}',
+                           'CSRF token validation — forged request has no valid token')
+            return jsonify({'message': f'Transfer of ${amount} to {to_user} was BLOCKED!',
+                            'prevented': True, 'success': False,
+                            'prevention_method': 'CSRF token validation failed — forged request rejected'})
+        if not csrf_token or csrf_token not in csrf_tokens:
+            return jsonify({'error': 'CSRF token missing or invalid. Request rejected.',
+                            'prevented': True,
+                            'prevention_method': 'Server requires valid X-CSRF-Token header'}), 403
+        csrf_tokens.pop(csrf_token, None)
+        return jsonify({'message': f'Transfer of ${amount} to {to_user} completed securely.',
+                        'success': True, 'prevented': False,
+                        'prevention_method': 'CSRF token validated — request is legitimate'})
+    else:
+        # P1 VULNERABLE
+        csrf_token = request.headers.get('X-CSRF-Token', '')
+        if simulate:
+            log_attack('CSRF', f'Simulated external site forged transfer of ${amount} to {to_user} (no CSRF token)', ip)
+            return jsonify({'message': f'Transfer of ${amount} to {to_user} went through!',
+                            'attack': True,
+                            'attack_detail': 'CSRF attack succeeded — no token validation stopped the forged request.',
+                            'success': True})
+        if not csrf_token:
+            log_attack('CSRF', f'Transfer of ${amount} to {to_user} completed without CSRF token', ip)
+            return jsonify({'message': f'Transfer of ${amount} to {to_user} initiated',
+                            'warning': 'No CSRF token was sent — this request could be forged by an external site.',
+                            'success': True})
+        return jsonify({'message': f'Transfer of ${amount} to {to_user} initiated', 'success': True})
 
 @app.route('/api/attacks', methods=['GET'])
 def get_attacks():

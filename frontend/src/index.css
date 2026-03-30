@@ -1574,3 +1574,57 @@ body {
     flex-direction: column;
   }
 }
+
+/* ─── Project 2: Prevention Mode ─── */
+
+.prevention-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  border: 1px solid var(--color-danger);
+  background: rgba(255, 0, 60, 0.1);
+  color: var(--color-danger);
+  transition: all 0.3s ease;
+}
+
+.prevention-toggle .toggle-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-danger);
+}
+
+.prevention-toggle.active {
+  border-color: var(--color-success);
+  background: rgba(0, 255, 136, 0.1);
+  color: var(--color-success);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+}
+
+.prevention-toggle.active .toggle-dot {
+  background: var(--color-success);
+  animation: pulse-green 2s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 4px rgba(0, 255, 136, 0.4); }
+  50% { box-shadow: 0 0 12px rgba(0, 255, 136, 0.8); }
+}
+
+.alert-success {
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  color: var(--color-success);
+}
+
+.alert-success .alert-icon {
+  color: var(--color-success);
+  font-size: 1.2em;
+}

@@ -6,6 +6,7 @@ import './index.css'
 const API_URL = 'http://localhost:5001/api'
 
 const AuthContext = createContext(null)
+const PreventionContext = createContext(null)
 
 function AuthProvider({ children }) {
   const [user, setUser] = useState(() => localStorage.getItem('user'))
@@ -36,6 +37,26 @@ function AuthProvider({ children }) {
 
 function useAuth() {
   return useContext(AuthContext)
+}
+
+function PreventionProvider({ children }) {
+  const [enabled, setEnabled] = useState(false)
+  useEffect(() => { axios.get(`${API_URL}/prevention`).then(r => setEnabled(r.data.enabled)).catch(() => {}) }, [])
+  const toggle = async () => { const r = await axios.post(`${API_URL}/prevention`, { enabled: !enabled }); setEnabled(r.data.enabled) }
+  return <PreventionContext.Provider value={{ enabled, toggle }}>{children}</PreventionContext.Provider>
+}
+function usePrevention() { return useContext(PreventionContext) }
+
+function PreventionAlert({ method }) {
+  return (
+    <div className="alert-box alert-success">
+      <span className="alert-icon">✓</span>
+      <div>
+        <strong>ATTACK PREVENTED</strong>
+        <p style={{fontFamily:'monospace',fontSize:'0.85em',marginTop:'4px'}}>{method}</p>
+      </div>
+    </div>
+  )
 }
 
 /* ─── Glitch Text ─── */
@@ -88,6 +109,17 @@ function MatrixBackground() {
   return <div className="matrix-rain" aria-hidden="true" />
 }
 
+/* ─── Prevention Toggle ─── */
+function PreventionToggle() {
+  const { enabled, toggle } = usePrevention()
+  return (
+    <button onClick={toggle} className={`prevention-toggle ${enabled ? 'active' : ''}`}>
+      <span className="toggle-dot"></span>
+      {enabled ? 'P2: SHIELD ON' : 'P1: VULNERABLE'}
+    </button>
+  )
+}
+
 /* ─── Navbar ─── */
 function Navbar() {
   const { user, logout } = useAuth()
@@ -127,6 +159,7 @@ function Navbar() {
           )}
         </div>
 
+        <PreventionToggle />
         <div className="nav-status">
           <span className="status-dot"></span>
           <span className="status-text">SYSTEM ONLINE</span>
@@ -485,6 +518,7 @@ function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [attackDetected, setAttackDetected] = useState(false)
+  const [prevented, setPrevented] = useState(null)
   const { login } = useAuth()
   const navigate = useNavigate()
 
@@ -492,13 +526,15 @@ function Login() {
     e.preventDefault()
     setError('')
     setAttackDetected(false)
+    setPrevented(null)
     try {
       const res = await axios.post(`${API_URL}/login`, { username, password })
-      login(res.data.user)
-      navigate('/dashboard')
+      if (res.data.prevented) setPrevented(res.data.prevention_method)
+      if (res.data.success) { login(res.data.user); if (!res.data.prevented) navigate('/dashboard') }
     } catch (err) {
       if (err.response?.data?.attack) setAttackDetected(true)
-      setError(err.response?.data?.error || 'Authentication failed')
+      if (err.response?.data?.prevented) setPrevented(err.response.data.prevention_method)
+      setError(err.response?.data?.error || err.response?.data?.message || 'Authentication failed')
     }
   }
 
@@ -516,7 +552,8 @@ function Login() {
           <p>Vulnerable authentication - try bypassing with SQL payloads</p>
         </div>
 
-        {attackDetected && (
+        {prevented && <PreventionAlert method={prevented} />}
+        {attackDetected && !prevented && (
           <div className="alert-box alert-danger">
             <span className="alert-icon">⚠</span>
             <div>
@@ -526,7 +563,7 @@ function Login() {
           </div>
         )}
 
-        {error && !attackDetected && (
+        {error && !attackDetected && !prevented && (
           <div className="alert-box alert-error">
             <span className="alert-icon">✕</span>
             <span>{error}</span>
@@ -663,14 +700,17 @@ function Search() {
   const [results, setResults] = useState([])
   const [error, setError] = useState('')
   const [attackDetected, setAttackDetected] = useState(false)
+  const [prevented, setPrevented] = useState(null)
 
   const handleSearch = async (e) => {
     e.preventDefault()
     setError('')
     setAttackDetected(false)
+    setPrevented(null)
     try {
       const res = await axios.post(`${API_URL}/search`, { query })
       setResults(res.data.results)
+      if (res.data.prevented) setPrevented(res.data.prevention_method)
     } catch (err) {
       if (err.response?.data?.attack) setAttackDetected(true)
       setError(err.response?.data?.error || 'Search failed')
@@ -690,7 +730,8 @@ function Search() {
           <p>Search input is not sanitized - malicious scripts execute on page</p>
         </div>
 
-        {attackDetected && (
+        {prevented && <PreventionAlert method={prevented} />}
+        {attackDetected && !prevented && (
           <div className="alert-box alert-danger">
             <span className="alert-icon">⚠</span>
             <div>
@@ -736,6 +777,7 @@ function Comments() {
   const [comments, setComments] = useState([])
   const [error, setError] = useState('')
   const [attackDetected, setAttackDetected] = useState(false)
+  const [prevented, setPrevented] = useState(null)
 
   const fetchComments = async () => {
     try {
@@ -750,10 +792,13 @@ function Comments() {
     e.preventDefault()
     setError('')
     setAttackDetected(false)
+    setPrevented(null)
     try {
-      await axios.post(`${API_URL}/comments`, { comment })
+      const res = await axios.post(`${API_URL}/comments`, { comment })
+      if (res.data.prevented) setPrevented(res.data.prevention_method)
+      if (res.data.comments) setComments(res.data.comments)
       setComment('')
-      fetchComments()
+      if (!res.data.prevented) fetchComments()
     } catch (err) {
       if (err.response?.data?.attack) setAttackDetected(true)
       setError(err.response?.data?.error || 'Failed to post')
@@ -773,7 +818,8 @@ function Comments() {
           <p>Comments are stored and rendered without sanitization</p>
         </div>
 
-        {attackDetected && (
+        {prevented && <PreventionAlert method={prevented} />}
+        {attackDetected && !prevented && (
           <div className="alert-box alert-danger">
             <span className="alert-icon">⚠</span>
             <div>
@@ -822,15 +868,18 @@ function Ping() {
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
   const [attackDetected, setAttackDetected] = useState(false)
+  const [prevented, setPrevented] = useState(null)
 
   const handlePing = async (e) => {
     e.preventDefault()
     setError('')
     setAttackDetected(false)
     setResult('')
+    setPrevented(null)
     try {
       const res = await axios.post(`${API_URL}/ping`, { host })
       setResult(res.data.result)
+      if (res.data.prevented) setPrevented(res.data.prevention_method)
     } catch (err) {
       if (err.response?.data?.attack) setAttackDetected(true)
       setError(err.response?.data?.error || 'Ping failed')
@@ -850,7 +899,8 @@ function Ping() {
           <p>Ping input is passed to system command without sanitization</p>
         </div>
 
-        {attackDetected && (
+        {prevented && <PreventionAlert method={prevented} />}
+        {attackDetected && !prevented && (
           <div className="alert-box alert-danger">
             <span className="alert-icon">⚠</span>
             <div>
@@ -890,11 +940,13 @@ function Ping() {
 /* ─── Transfer (CSRF) ─── */
 function Transfer() {
   const { user } = useAuth()
+  const { enabled: preventionEnabled } = usePrevention()
   const navigate = useNavigate()
   const [toUser, setToUser] = useState('')
   const [amount, setAmount] = useState('')
   const [message, setMessage] = useState('')
   const [attackDetected, setAttackDetected] = useState(false)
+  const [prevented, setPrevented] = useState(null)
 
   useEffect(() => {
     if (!localStorage.getItem('user')) navigate('/login')
@@ -907,10 +959,18 @@ function Transfer() {
     e.preventDefault()
     setAttackDetected(false)
     setMessage('')
+    setPrevented(null)
     try {
-      const res = await axios.post(`${API_URL}/transfer`, { to_user: toUser, amount })
+      const headers = {}
+      if (preventionEnabled) {
+        const tokenRes = await axios.get(`${API_URL}/csrf-token`)
+        headers['X-CSRF-Token'] = tokenRes.data.token
+      }
+      const res = await axios.post(`${API_URL}/transfer`, { to_user: toUser, amount }, { headers })
+      if (res.data.prevented) setPrevented(res.data.prevention_method)
       setMessage(res.data.message)
     } catch (err) {
+      if (err.response?.data?.prevented) setPrevented(err.response.data.prevention_method)
       setMessage(err.response?.data?.error || 'Transfer failed')
     }
   }
@@ -918,13 +978,17 @@ function Transfer() {
   const simulateCSRF = async () => {
     setAttackDetected(false)
     setMessage('')
+    setPrevented(null)
     try {
-      const res = await axios.post(`${API_URL}/transfer`, { 
-        to_user: 'hacker', 
+      const res = await axios.post(`${API_URL}/transfer`, {
+        to_user: 'hacker',
         amount: '9999',
-        simulate_csrf: true 
+        simulate_csrf: true
       })
-      if (res.data.attack) {
+      if (res.data.prevented) {
+        setPrevented(res.data.prevention_method)
+        setMessage(res.data.message)
+      } else if (res.data.attack) {
         setAttackDetected(true)
         setMessage(res.data.attack_detail)
       }
@@ -940,7 +1004,8 @@ function Transfer() {
           <p>Form lacks CSRF token - forged requests can be sent</p>
         </div>
 
-        {attackDetected && (
+        {prevented && <PreventionAlert method={prevented} />}
+        {attackDetected && !prevented && (
           <div className="alert-box alert-danger">
             <span className="alert-icon">⚠</span>
             <div>
@@ -996,16 +1061,16 @@ function Transfer() {
 /* ─── Attack Log ─── */
 function AttackLog() {
   const [attacks, setAttacks] = useState([])
+  const [preventions, setPreventions] = useState([])
   const [filter, setFilter] = useState('all')
 
   useEffect(() => {
-    const fetchAttacks = () => {
-      axios.get(`${API_URL}/attacks`)
-        .then(res => setAttacks(res.data.attacks))
-        .catch(() => {})
+    const fetchData = () => {
+      axios.get(`${API_URL}/attacks`).then(res => setAttacks(res.data.attacks)).catch(() => {})
+      axios.get(`${API_URL}/prevention-log`).then(res => setPreventions(res.data.preventions)).catch(() => {})
     }
-    fetchAttacks()
-    const interval = setInterval(fetchAttacks, 3000)
+    fetchData()
+    const interval = setInterval(fetchData, 3000)
     return () => clearInterval(interval)
   }, [])
 
@@ -1029,7 +1094,7 @@ function AttackLog() {
           <div className="threats-title">
             <ThreatBadge level="detected" />
             <h1><GlitchText tag="span">THREAT DETECTION</GlitchText></h1>
-            <span className="threat-count">{attacks.length} ATTACKS LOGGED</span>
+            <span className="threat-count">{attacks.length} DETECTED · {preventions.length} PREVENTED</span>
           </div>
 
           <div className="filter-btns">
@@ -1107,24 +1172,26 @@ function AttackLog() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="cyber-app">
-          <MatrixBackground />
-          <Navbar />
-          <main className="main-content">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/search" element={<Search />} />
-              <Route path="/comments" element={<Comments />} />
-              <Route path="/ping" element={<Ping />} />
-              <Route path="/transfer" element={<Transfer />} />
-              <Route path="/attacks" element={<AttackLog />} />
-            </Routes>
-          </main>
-        </div>
-      </Router>
+      <PreventionProvider>
+        <Router>
+          <div className="cyber-app">
+            <MatrixBackground />
+            <Navbar />
+            <main className="main-content">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/search" element={<Search />} />
+                <Route path="/comments" element={<Comments />} />
+                <Route path="/ping" element={<Ping />} />
+                <Route path="/transfer" element={<Transfer />} />
+                <Route path="/attacks" element={<AttackLog />} />
+              </Routes>
+            </main>
+          </div>
+        </Router>
+      </PreventionProvider>
     </AuthProvider>
   )
 }

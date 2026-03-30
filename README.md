@@ -417,6 +417,134 @@ ehtp_project1/
 
 ---
 
+---
+
+## Project 2 — Attack Prevention (P2: SHIELD ON)
+
+Project 2 is integrated into the same application via a **toggle button** in the navbar.
+
+### Switching Modes
+
+| Mode | Button | Color | Behavior |
+|------|--------|-------|----------|
+| Project 1 | **P1: VULNERABLE** | Red | Attacks are detected and logged |
+| Project 2 | **P2: SHIELD ON** | Green | Attacks are prevented using secure coding |
+
+Click the toggle button in the navbar to switch between modes.
+
+### P2 Demonstration Steps
+
+Make sure the navbar toggle shows **"P2: SHIELD ON"** (green). Then repeat the same attacks:
+
+#### 1. SQL Injection Prevention — Parameterized Queries
+
+1. Go to **Login** page
+2. Click **"AUTO-INJECT PAYLOAD"** (or type `admin' --` as username)
+3. Green alert: **"ATTACK PREVENTED"**
+4. Method shown: `Parameterized query — SQL payload treated as literal string`
+
+**How it works:** The vulnerable f-string query:
+```python
+# P1 (VULNERABLE)
+query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
+```
+Is replaced with a parameterized query:
+```python
+# P2 (PREVENTED)
+cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+```
+
+#### 2. XSS Prevention — HTML Entity Escaping
+
+**Reflected XSS:**
+1. Go to **Search** page
+2. Click **"INJECT XSS"** (or type `<script>alert("XSS")</script>`)
+3. Green alert: **"ATTACK PREVENTED"**
+4. Method shown: `Input sanitized: "<script>..." -> "&lt;script&gt;..."`
+
+**Stored XSS:**
+1. Go to **Comments** page
+2. Click **"INJECT XSS"**
+3. Green alert: **"ATTACK PREVENTED"**
+4. The comment is sanitized before storage — `<script>` becomes harmless text
+
+**How it works:**
+```python
+# P2 (PREVENTED) — sanitize before storage/output
+import html
+sanitized = html.escape(user_input)
+# <script>alert(1)</script> → &lt;script&gt;alert(1)&lt;/script&gt;
+```
+
+#### 3. Command Injection Prevention — Whitelist Validation
+
+1. Go to **Network** page
+2. Click **"INJECT CMD"** (or type `127.0.0.1 & whoami`)
+3. Green alert: **"ATTACK PREVENTED"**
+4. Method shown: `Rejected by whitelist — only alphanumeric, dots, hyphens permitted`
+
+**How it works:**
+```python
+# P2 (PREVENTED) — only allow valid hostnames/IPs
+def validate_hostname(host):
+    ip_pat = r'^(\d{1,3}\.){3}\d{1,3}$'
+    host_pat = r'^[a-zA-Z0-9][a-zA-Z0-9.\-]{0,253}[a-zA-Z0-9]$'
+    # Rejects: "127.0.0.1 & whoami" (contains &)
+    # Accepts: "127.0.0.1", "google.com"
+```
+
+#### 4. CSRF Prevention — Token Validation
+
+1. Login with `admin / admin123`
+2. Go to **Transfer** page
+3. Click **"LAUNCH CSRF ATTACK"**
+4. Green alert: **"ATTACK PREVENTED"**
+5. Method shown: `CSRF token validation failed — forged request rejected`
+6. Normal transfers still work (frontend fetches a valid token first)
+
+**How it works:**
+```python
+# P2 (PREVENTED) — server generates one-time tokens
+@app.route('/api/csrf-token')
+def get_csrf_token():
+    token = secrets.token_hex(32)
+    csrf_tokens[token] = True
+    return jsonify({'token': token})
+
+# Transfer endpoint validates the token
+csrf_token = request.headers.get('X-CSRF-Token', '')
+if not csrf_token or csrf_token not in csrf_tokens:
+    return jsonify({'error': 'CSRF token missing or invalid'}), 403
+```
+
+### Viewing the Prevention Log
+
+1. Go to **Attacks** page (THREATS in navbar)
+2. Counter shows: **"X DETECTED · Y PREVENTED"**
+3. Prevention entries appear with green **PREVENTED** badges
+4. Each entry shows the attack type, payload, and specific prevention method used
+
+### Prevention Summary Table
+
+| Attack | P1: Detection | P2: Prevention Technique |
+|--------|--------------|--------------------------|
+| SQL Injection | Regex pattern matching | **Parameterized queries** (`?` placeholders) |
+| XSS (Reflected) | Regex pattern matching | **`html.escape()`** output sanitization |
+| XSS (Stored) | Regex pattern matching | **`html.escape()`** before database storage |
+| Command Injection | Regex pattern matching | **Whitelist validation** (hostname regex) |
+| CSRF | Logging only | **CSRF token validation** (`X-CSRF-Token` header) |
+
+### P2 API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/prevention` | GET | Check current mode (`{"enabled": true/false}`) |
+| `/api/prevention` | POST | Toggle mode (`{"enabled": true}`) |
+| `/api/prevention-log` | GET | View all prevented attacks |
+| `/api/csrf-token` | GET | Get a one-time CSRF token |
+
+---
+
 ## License
 
 This project is for educational purposes only. All attacks are performed in a controlled, isolated Docker environment. Do not use these techniques against systems you do not own or have explicit permission to test.
